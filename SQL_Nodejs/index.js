@@ -5,6 +5,8 @@ const express = require("express");
 const app = express();
 const path = require("path");
 const methodOverride = require("method-override");
+const { v4: uuidv4 } = require("uuid");
+const { use } = require("marked");
 
 app.use(methodOverride("_method"));
 app.use(express.urlencoded({ extended: true }));
@@ -35,6 +37,25 @@ app.get("/", (req, res) => {
       console.log(result[0]["count(*)"]);
       let count = result[0]["count(*)"];
       res.render("Home.ejs", { count });
+    });
+  } catch (err) {
+    console.log(err);
+    res.send("Some Error in DB");
+  }
+});
+
+app.get("/insert", (req, res) => {
+  res.render("insert.ejs");
+});
+
+app.post("/join", (req, res) => {
+  let { username, password, email } = req.body;
+  let id = uuidv4();
+  let q = `INSERT INTO user (id, username, password, email) VALUES ('${id}', '${username}', '${password}', '${email}')`;
+  try {
+    connection.query(q, (err, results) => {
+      if (err) throw err;
+      res.redirect("/");
     });
   } catch (err) {
     console.log(err);
@@ -104,6 +125,53 @@ app.patch("/user/:id", (req, res) => {
 
 app.listen("8080", () => {
   console.log("Server listening to port 8080");
+});
+
+app.get("/user/:id/delete", (req, res) => {
+  let { id } = req.params;
+  console.log(id);
+  let q = `SELECT * FROM user WHERE id = '${id}'`;
+  try {
+    connection.query(q, (err, results) => {
+      if (err) throw err;
+      let user = results[0];
+      console.log(results[0]);
+      res.render("delete.ejs", { user });
+    });
+  } catch (err) {
+    console.log(err);
+    res.send("Some Error in DB");
+  }
+});
+
+app.delete("/user/:id", (req, res) => {
+  let { id } = req.params;
+  let { password: formPass, username: newUsername } = req.body;
+  console.log(id);
+  let q = `SELECT * FROM user WHERE id = '${id}'`;
+  try {
+    connection.query(q, (err, results) => {
+      if (err) throw err;
+      let user = results[0];
+      if (formPass != user.password) res.send("Wrong Password");
+      else {
+        let q2 = `DELETE FROM user WHERE id='${id}'`;
+        try {
+          connection.query(q2, (err, result) => {
+            if (err) throw err;
+            console.log("Deleted!");
+            res.redirect("/user");
+          });
+        } catch (err) {
+          console.log(err);
+          res.send("Some error in DB");
+        }
+      }
+    });
+  } catch (err) {
+    console.log(err);
+    res.send("Some Error in DB");
+  }
 });
 // let createRandomUser = () => {
 //   return {
